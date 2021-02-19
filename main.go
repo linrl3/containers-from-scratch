@@ -10,6 +10,11 @@ import (
 	"syscall"
 )
 
+var (
+	nsName  = "linrl3-ns"
+	rootDir = "/home/linrl3/ubuntufs"
+)
+
 // go run main.go run <cmd> <args>
 func main() {
 	switch os.Args[1] {
@@ -23,7 +28,7 @@ func main() {
 }
 
 func run() {
-	fmt.Printf("Running %v \n", os.Args[2:])
+	fmt.Printf("Running %v as pid %v\n ", os.Args[2:], os.Getpid())
 
 	cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
 	cmd.Stdin = os.Stdin
@@ -33,23 +38,25 @@ func run() {
 		Cloneflags:   syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS,
 		Unshareflags: syscall.CLONE_NEWNS,
 	}
-
 	must(cmd.Run())
 }
 
 func child() {
-	fmt.Printf("Running %v \n", os.Args[2:])
+	fmt.Printf("Running %v as pid %v\n ", os.Args[2:], os.Getpid())
 
-	cg()
+	// cg()
 
 	cmd := exec.Command(os.Args[2], os.Args[3:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	must(syscall.Sethostname([]byte("container")))
-	must(syscall.Chroot("/home/liz/ubuntufs"))
+	must(syscall.Sethostname([]byte(nsName)))
+	must(syscall.Chroot(rootDir))
 	must(os.Chdir("/"))
+
+	// ps command get information from /proc
+
 	must(syscall.Mount("proc", "proc", "proc", 0, ""))
 	must(syscall.Mount("thing", "mytemp", "tmpfs", 0, ""))
 
